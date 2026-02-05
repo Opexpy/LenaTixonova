@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Конфигурация API ключей
 TELEGRAM_TOKEN = "8361115667:AAH3V1LTbPESW4JyCIE5Mrr7KXJFKYGoWgE"
-MISTRAL_API_KEY = "MozNyqUjXtgLolO0Yjzv0diJCvU4MLua"
+MISTRAL_API_KEY = "hK3WmFALFcUl7neQTZzMXR7Q4IJ6HDbZ"
 
 # Проверка токенов перед инициализацией
 logger.info(f"TELEGRAM_TOKEN установлен: {bool(TELEGRAM_TOKEN and TELEGRAM_TOKEN != 'ВАШ_TELEGRAM_BOT_TOKEN')}")
