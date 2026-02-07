@@ -1,2 +1,2 @@
-python-telegram-bot==21.10
-mistralai==1.2.4
+python-telegram-bot
+mistralai
