@@ -1,2 +1,2 @@
-python-telegram-bot
-mistralai
+python-telegram-bot==22.6
+groq==0.15.0
