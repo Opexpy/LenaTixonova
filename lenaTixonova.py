@@ -6,8 +6,8 @@ from telegram import Update, constants
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # --- [ КЛЮЧИ ] ---
-TELEGRAM_TOKEN = "8361115667:AAF9H-3SSBP_JVTOYeiAwqRlpSS5Jtlvekg"
-OPENROUTER_API_KEY = "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"
+TELEGRAM_TOKEN = "8361115667:AAEhWJRHh0X2ptYILKqdXuO_1mXfE8CA1hE"
+OPENROUTER_API_KEY = "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"
 
 # Оставляем Chimera, раз она тебе зашла, но усмиряем её
 MODEL_NAME = "tngtech/tng-r1t-chimera:free"
