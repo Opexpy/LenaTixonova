@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # СЮДА ВСТАВЬ НОВЫЙ ТОКЕН ИЗ BOTFATHER
 TELEGRAM_TOKEN = "8361115667:AAEShfeAEqBniATDewAnyDNqqxuAJubF9yo"
 # ТВОЙ API КЛЮЧ ОТ OPENROUTER
-OPENROUTER_API_KEY = "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" 
+OPENROUTER_API_KEY = "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" 
 
 MODEL_NAME = "deepseek/deepseek-r1-0528:free"
 
