@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 TELEGRAM_TOKEN = "8361115667:AAEhWJRHh0X2ptYILKqdXuO_1mXfE8CA1hE"
 
 # ВАЖНО: Твой баланс на OpenRouter сейчас -0.21$. Если бот не отвечает, создай новый API-ключ на новом аккаунте.
-OPENROUTER_API_KEY = "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" 
+OPENROUTER_API_KEY = "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" 
 
 MODEL_NAME = "deepseek/deepseek-r1-0528:free"
 
