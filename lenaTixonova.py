@@ -5,7 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from groq import Groq
 
 # --- НАСТРОЙКИ ---
-TELEGRAM_TOKEN = "8361115667:AAFGdgNLDj0kxuXASHdekmvG0F4nnblt7KE".strip()
+TELEGRAM_TOKEN = "8361115667:AAF9H-3SSBP_JVTOYeiAwqRlpSS5Jtlvekg".strip()
 GROQ_API_KEY = "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".strip()
 
 # Модель от Meta (Llama 3), она очень умная и быстрая
@@ -94,4 +94,5 @@ def main():
     app.run_polling()
 
 if __name__ == '__main__':
+
     main()
