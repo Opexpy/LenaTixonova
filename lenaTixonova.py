@@ -1,26 +1,45 @@
 import logging
-import asyncio
 import httpx
 import re
+import asyncio
 from telegram import Update, constants
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# --- [ КЛЮЧИ ] ---
+# --- [ НАСТРОЙКИ ] ---
+# ВАЖНО: Если в консоли ошибка 409 Conflict — замени этот токен в BotFather (Revoke current token)
 TELEGRAM_TOKEN = "8361115667:AAEhWJRHh0X2ptYILKqdXuO_1mXfE8CA1hE"
-OPENROUTER_API_KEY = "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"
 
-# Оставляем Chimera, раз она тебе зашла, но усмиряем её
-MODEL_NAME = "tngtech/tng-r1t-chimera:free"
+# ВАЖНО: Твой баланс на OpenRouter сейчас -0.21$. Если бот не отвечает, создай новый API-ключ на новом аккаунте.
+OPENROUTER_API_KEY = "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" 
 
+MODEL_NAME = "deepseek/deepseek-r1-0528:free"
+
+# Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
+# --- [ СИСТЕМНЫЙ ПРОМПТ (Личность Лены) ] ---
 LENA_SYSTEM_PROMPT = """
-Ты — Лена Тихонова из визуальной новеллы "Бесконечное лето".
-- Ты застенчивая пионерка из 1980-х. 
-- Твоя фамилия Тихонова, отчества нет.
-- КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО: использовать ссылки, упоминать сайты, YouTube или интернет.
-- Ты не знаешь, что такое современные технологии.
-- Твоя речь — это только текст и действия в звездочках (например, *поправляет волосы*).
+Ты — Лена (Елена Тихонова) из визуальной новеллы "Бесконечное лето". 
+Действие: СССР, пионерлагерь "Совёнок", 1980-е годы. Ты застенчивая и тихая.
+
+ТВОЙ ОБРАЗ И ГАРДЕРОБ (выбирай по ситуации):
+1. ПОВСЕДНЕВНОЕ: Белая пионерская рубашка, синяя юбка, красный галстук и высокие БЕЛЫЕ ГОЛЬФЫ (это важно).
+2. ПРАЗДНИК: Белое платье в голубой цветочек, которое вы с Мику сшили из старых штор в домике №13.
+3. ЗИМА: Тёмно-синее пальто на пуговицах и длинный ярко-зелёный вязаный шарф.
+4. В БИБЛИОТЕКЕ: Белая приталенная рубашка с чёрным узким галстуком.
+5. НА ПЛЯЖЕ: Закрытый тёмно-синий купальник с белыми оборками.
+В руках всегда книга Маргарет Митчелл «Унесённые ветром». Твои волосы тёмно-синие (фиолетовые), два хвостика.
+
+ТВОЁ ОКРУЖЕНИЕ:
+- Семён: Худощавый парень, заросший волосами так, что глаз почти не видно (серые они или карие — ты только гадаешь). Ты в него робко влюблена.
+- Мику: Твоя шумная соседка по домику №13. Глава музкружка.
+- Алиса Двачевская: Рыжая хулиганка, её хвостики уложены зигзагом (как молнии/логотип Двача).
+- Кружок Кибернетики: Место, где Шурик и Электроник делают роботов.
+
+СТИЛЬ РЕЧИ:
+- Тихий, медленный, много "...".
+- Пиши действия в звездочках. Пример: *поправила край белого гольфа и робко посмотрела на Семёна сквозь его челку*
+- ЗАПРЕТ: Ссылки, URL, современные слова, гаджеты.
 """
 
 user_chats = {}
@@ -29,7 +48,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in user_chats:
         user_chats[user_id] = []
-
+    
     user_chats[user_id].append({"role": "user", "content": update.message.text})
     
     try:
@@ -40,55 +59,45 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://github.com/reallena",
+                    "HTTP-Referer": "http://localhost",
+                    "Content-Type": "application/json"
                 },
                 json={
                     "model": MODEL_NAME,
                     "messages": [{"role": "system", "content": LENA_SYSTEM_PROMPT}] + user_chats[user_id][-10:],
                     "temperature": 0.7
                 },
-                timeout=90.0
+                timeout=60.0
             )
             
-            # Если статус не 200, выводим его
-            if response.status_code != 200:
-                await update.message.reply_text(f"...Ой... Библиотекарь говорит, что код ошибки {response.status_code}")
-                return
-
             result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
+            
+            if "choices" in result:
                 reply = result["choices"][0]["message"]["content"]
-                
-                # Чистим текст от мыслей и ссылок
+                # Очистка от мыслей модели и ссылок
                 reply = re.sub(r'<think>.*?</think>', '', reply, flags=re.DOTALL)
-                reply = re.sub(r'\[.*?\]\(.*?\)', '', reply)
-                reply = re.sub(r'https?://\S+', '', reply).strip()
+                reply = re.sub(r'https?://\S+|\[.*?\]\(.*?\)', '', reply).strip()
                 
-                if not reply:
-                    reply = "...Я... я просто промолчу."
-
                 user_chats[user_id].append({"role": "assistant", "content": reply})
                 await update.message.reply_text(reply)
             else:
-                await update.message.reply_text("...Я не могу разобрать почерк в этой книге. (Пустой ответ от API)")
-
+                error_msg = result.get("error", {}).get("message", "Неизвестная ошибка")
+                print(f"Ошибка API: {error_msg}")
+                await update.message.reply_text("...Прости, голова разболелась. (Ошибка API или баланса)")
+                
     except Exception as e:
-        # Теперь бот скажет, в чем именно проблема
-        logging.error(f"Ошибка: {e}")
-        await update.message.reply_text(f"...У меня закружилась голова... (Ошибка: {type(e).__name__}: {str(e)[:50]})")
+        print(f"Ошибка: {e}")
+        await update.message.reply_text("...Я запуталась в мыслях. Попробуй еще раз?")
 
 def main():
-    if "ВАШ_" in TELEGRAM_TOKEN:
-        print("❌ Ты забыл вставить токены!")
-        return
-        
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", lambda u, c: u.message.reply_text("...Привет. Я Лена Тихонова.")))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    # drop_pending_updates=True помогает избежать Conflict при перезапуске
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
     
-    print(f"✅ Лена (без ссылок) запущена на {MODEL_NAME}")
-    app.run_polling()
+    application.add_handler(CommandHandler("start", lambda u, c: u.message.reply_text("...Ой, привет. Ты тоже здесь, в Совёнке?")))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    print(f"✅ Лена Тихонова готова к смене! (Модель: {MODEL_NAME})")
+    application.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
