@@ -1,98 +1,123 @@
+import os
+import sys
+import subprocess
 import logging
-import asyncio
-from telegram import Update, constants
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from groq import Groq
+import time
 
-# --- НАСТРОЙКИ ---
-TELEGRAM_TOKEN = "8361115667:AAF9H-3SSBP_JVTOYeiAwqRlpSS5Jtlvekg".strip()
-GROQ_API_KEY = "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".strip()
+# --- АВТО-УСТАНОВКА БИБЛИОТЕК ---
+try:
+    from telegram import Update, constants
+    from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+    from groq import Groq
+except ImportError:
+    print("Устанавливаю необходимые библиотеки...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "groq", "python-telegram-bot"])
+    from telegram import Update, constants
+    from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+    from groq import Groq
 
-# Модель от Meta (Llama 3), она очень умная и быстрая
+# --- НАСТРОЙКИ (ОБЯЗАТЕЛЬНО ВСТАВЬ СВОИ) ---
+TELEGRAM_TOKEN = "8361115667:AAF9H-3SSBP_JVTOYeiAwqRlpSS5Jtlvekg"
+GROQ_API_KEY = "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"
+
+# Модель
 MODEL_NAME = "llama-3.3-70b-versatile"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
-logger = logging.getLogger(__name__)
 
-# Инициализация клиента Groq
-try:
-    client = Groq(api_key=GROQ_API_KEY)
-except Exception as e:
-    client = None
-    print(f"Ошибка Groq: {e}")
-
-LENA_SYSTEM_PROMPT = """Ты — Лена (Елена Тихонова) из "Бесконечного лета".
-ХАРАКТЕР: Застенчивая, тихая, любишь читать под кипарисами. Ты часто смущаешься и используешь "...".
-ОТНОШЕНИЯ И ПЕРСОНАЖИ:
-- Иногда вспоминай Алису (Двачевскую). Она тебя задирает, и ты её немного побаиваешься, но в душе ценишь.
-- Упоминай Славяну, как пример идеальной помощницы вожатой.
-- Вспоминай Ульяну, когда речь заходит о шуме или краже котлет.
-- Мику — твоя шумная соседка.
-- Ты тоскуешь по тишине и иногда хочешь, чтобы кто-то просто посидел рядом.
-СТИЛЬ: Отвечай на русском. Коротко, меланхолично, интровертно. Никакой политики."""
+LENA_SYSTEM_PROMPT = """
+Ты — Лена Тихонова из игры "Бесконечное лето".
+ЛИЧНОСТЬ:
+- Застенчивая, тихая, любишь книги. Фамилия Тихонова, отчества нет.
+- Ты из 1980-х, пионерлагерь "Совёнок". Никакого интернета или политики.
+- В речи используешь "..." и часто смущаешься.
+- Твой образ из канона и модов: глубокая, иногда меланхоличная, верная, но скрытная.
+"""
 
 user_chats = {}
+
+# --- КОМАНДА ПРОВЕРКИ СТАТУСА (ОТЛАДКА) ---
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    start_time = time.time()
+    try:
+        # Проверяем Groq
+        client = Groq(api_key=GROQ_API_KEY)
+        client.models.list()
+        groq_status = "✅ Работает"
+    except Exception as e:
+        groq_status = f"❌ Ошибка: {str(e)[:50]}"
+    
+    ping = round((time.time() - start_time) * 1000)
+    
+    status_text = (
+        f"🔍 **Отчет Лены:**\n"
+        f"Библиотека: `Библиотека 'Совёнка' открыта`\n"
+        f"Связь с Groq: `{groq_status}`\n"
+        f"Задержка: `{ping}мс`\n"
+        f"Активных диалогов: `{len(user_chats)}`"
+    )
+    await update.message.reply_text(status_text, parse_mode="Markdown")
+
+# --- КОМАНДА ОЧИСТКИ ЧАТА ---
+async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_chats[user_id] = []
+    await update.message.reply_text("...Я закрыла книгу. Давай... давай начнем новую главу. О чем мы говорили? Я всё забыла...")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_chats[user_id] = []
-    await update.message.reply_text("...Ой. Привет. Я не заметила, как ты подошел... Я тут читала. Я Лена... Хочешь посидеть рядом?")
+    await update.message.reply_text("...Ой. Привет. Я Лена... Ты тоже из этого отряда? Я тебя раньше не видела...")
 
-async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_chats[update.effective_user.id] = []
-    await update.message.reply_text("...Хорошо. Я закрою эту страницу... Давай начнем с чистого листа.")
-
+# --- ОБРАБОТКА СООБЩЕНИЙ ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    text = update.message.text
-
-    if not client:
-        await update.message.reply_text("...У меня карандаш сломался (API ошибка). Проверь ключи.")
-        return
+    user_input = update.message.text
 
     if user_id not in user_chats:
         user_chats[user_id] = []
 
-    user_chats[user_id].append({"role": "user", "content": text})
+    user_chats[user_id].append({"role": "user", "content": user_input})
+    
+    # Храним последние 10 сообщений
     if len(user_chats[user_id]) > 10:
         user_chats[user_id] = user_chats[user_id][-10:]
 
     try:
         await update.message.chat.send_action(action=constants.ChatAction.TYPING)
         
-        # Groq работает очень быстро, пауза 1 сек просто для естественности
-        await asyncio.sleep(1)
-
-        messages = [{"role": "system", "content": LENA_SYSTEM_PROMPT}] + user_chats[user_id]
-        
+        client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
             model=MODEL_NAME,
-            messages=messages,
-            temperature=0.8,
-            max_tokens=500
+            messages=[{"role": "system", "content": LENA_SYSTEM_PROMPT}] + user_chats[user_id],
+            temperature=0.7
         )
-        
-        reply = completion.choices[0].message.content
-        user_chats[user_id].append({"role": "assistant", "content": reply})
-        await update.message.reply_text(reply)
+
+        response_text = completion.choices[0].message.content
+        user_chats[user_id].append({"role": "assistant", "content": response_text})
+        await update.message.reply_text(response_text)
 
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
-        await update.message.reply_text("...Прости, я... я запуталась в мыслях. Попробуй еще раз чуть позже.")
+        logging.error(f"Ошибка: {e}")
+        # Если произошла ошибка, бот выведет её техническую часть для тебя
+        await update.message.reply_text(f"...Прости, я... я запуталась. Кажется, в моей книге вырвали страницы... (Ошибка: {str(e)[:100]})")
 
 def main():
-    if "ТВОЙ_" in TELEGRAM_TOKEN:
-        print("ОШИБКА: Вставь токен Telegram!")
+    if "ВАШ_" in TELEGRAM_TOKEN:
+        print("❌ ОШИБКА: Вставь токен в код!")
         return
 
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("clear", clear))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+
+    # Регистрация команд
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("clear", clear))
+    application.add_handler(CommandHandler("status", status)) # Отладочная команда
     
-    print("✅ Лена запущена на движке Groq! Лимитов больше не будет.")
-    app.run_polling()
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-if __name__ == '__main__':
+    print("✅ Лена Тихонова запущена. Команды: /start, /clear, /status")
+    application.run_polling()
 
+if __name__ == "__main__":
     main()
