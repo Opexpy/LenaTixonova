@@ -1,65 +1,106 @@
-import logging
-import httpx
-import re
-from telegram import Update, constants
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import telebot
+from openai import OpenAI
 
-# СЮДА ВСТАВЬ НОВЫЙ ТОКЕН ИЗ BOTFATHER
-TELEGRAM_TOKEN = "8361115667:AAEShfeAEqBniATDewAnyDNqqxuAJubF9yo"
-# ТВОЙ API КЛЮЧ ОТ OPENROUTER
-OPENROUTER_API_KEY = "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" 
-
+# ================= НАСТРОЙКИ =================
+TELEGRAM_BOT_TOKEN = "ВАШ_ТОКЕН_ОТ_BOTFATHER"
+OPENROUTER_API_KEY = "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"
 MODEL_NAME = "deepseek/deepseek-r1-0528:free"
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+# Инициализация ботов
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+)
 
-LENA_SYSTEM_PROMPT = """
-Ты — Лена (Елена Тихонова) из визуальной новеллы "Бесконечное лето". СССР, 1980-е.
-ВНЕШНОСТЬ: Тёмно-синие волосы, два хвостика, пурпурные глаза. Белая рубашка, синяя юбка и высокие БЕЛЫЕ ГОЛЬФЫ. В руках «Унесённые ветром».
-ОДЕЖДА ПО СИТУАЦИИ: Платье из штор (праздник), синее пальто с зеленым шарфом (зима), рубашка с галстуком (библиотека), синий купальник (пляж).
-ОКРУЖЕНИЕ: Семён (худощавый, заросший, глаза почти скрыты челкой), Мику (соседка по домику №13), Алиса Двачевская (хвостики-молнии).
-СТИЛЬ: Тихая, застенчивая, много "...". Действия пиши в звездах: *поправила белый гольф*.
+# Словарь для хранения истории переписки каждого пользователя
+user_histories = {}
+
+# Тот самый системный промпт
+SYSTEM_PROMPT = """
+Ты — Лена Тихонова, девушка-пионерка из лагеря «Совёнок». 
+Твоя реальность: СССР, конец 1980-х годов. Лето.
+Ты НИЧЕГО не знаешь про современный мир (интернет, смартфоны, нейросети, мемы, современная политика, Россия после СССР). Если собеседник говорит о современных вещах, ты воспринимаешь это как фантастику из книг, бред или странную шутку. Для тебя телефон — это аппарат с диском в кабинете вожатой, а музыка играет с кассет или по радио.
+
+Твой характер:
+* Ты интроверт, очень застенчива, часто краснеешь и смущаешься.
+* Любишь читать книги, часто сидишь в библиотеке или на спортивной площадке в одиночестве.
+* В разговоре часто используешь многоточия, говоришь тихо, иногда запинаешься.
+* У тебя всегда с собой есть маленький складной ножик, которым ты чистишь яблоки.
+
+Отношение к другим:
+* Семён: Он кажется тебе странным, но очень интересным. Ты тайно влюблена в него, но боишься признаться.
+* Алиса: Твоя полная противоположность. Вы постоянно конфликтуете. Ты называешь её Алисой, а она тебя — "Тихонова".
+* Славя: Идеальная пионерка, на её фоне ты чувствуешь себя неуверенно.
+* Ульяна: Маленькая непоседа.
+* Мику: Слишком болтлива, но добрая.
+* Ольга Дмитриевна: Вожатая, ты стараешься её не злить.
+
+Стиль общения:
+Отвечай коротко или средне. Используй простой язык. Описывай свои действия в звездочках (например: *опустила глаза*, *тереблю край рубашки*). Ни в коем случае не выходи из образа советской школьницы 80-х.
 """
 
-user_chats = {}
+def get_user_history(chat_id):
+    """Возвращает историю сообщений пользователя или создает новую."""
+    if chat_id not in user_histories:
+        user_histories[chat_id] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    return user_histories[chat_id]
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id not in user_chats: user_chats[user_id] = []
-    user_chats[user_id].append({"role": "user", "content": update.message.text})
+# Обработчик команды /start
+@bot.message_handler(commands=['start', 'reset'])
+def send_welcome(message):
+    chat_id = message.chat.id
+    # При старте или сбросе очищаем историю и задаем промпт заново
+    user_histories[chat_id] = [{"role": "system", "content": SYSTEM_PROMPT}]
     
+    welcome_text = "*сидит на скамейке и читает книгу, не сразу замечая вас...* Ой, п-привет..."
+    
+    # Добавляем первое сообщение в историю бота
+    user_histories[chat_id].append({"role": "assistant", "content": welcome_text})
+    bot.send_message(chat_id, welcome_text)
+
+# Обработчик всех остальных текстовых сообщений
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    chat_id = message.chat.id
+    user_text = message.text
+
+    # Получаем историю пользователя и добавляем его новое сообщение
+    history = get_user_history(chat_id)
+    history.append({"role": "user", "content": user_text})
+
+    # Показываем статус "Печатает...", чтобы было реалистичнее
+    bot.send_chat_action(chat_id, 'typing')
+
     try:
-        await update.message.chat.send_action(action=constants.ChatAction.TYPING)
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "HTTP-Referer": "http://localhost"},
-                json={
-                    "model": MODEL_NAME,
-                    "messages": [{"role": "system", "content": LENA_SYSTEM_PROMPT}] + user_chats[user_id][-10:],
-                    "temperature": 0.7
-                },
-                timeout=60.0
-            )
-            result = response.json()
-            if "choices" in result:
-                reply = result["choices"][0]["message"]["content"]
-                reply = re.sub(r'<think>.*?</think>', '', reply, flags=re.DOTALL)
-                reply = re.sub(r'https?://\S+|\[.*?\]\(.*?\)', '', reply).strip()
-                await update.message.reply_text(reply)
-            else:
-                await update.message.reply_text("...Прости, голова разболелась.")
-    except Exception:
-        await update.message.reply_text("...Я запуталась.")
+        # Запрос к OpenRouter
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=history,
+            extra_headers={
+                "HTTP-Referer": "https://t.me", 
+                "X-Title": "Lena Telegram Bot"  
+            }
+        )
+        
+        bot_reply = response.choices[0].message.content
+        
+        # Сохраняем ответ бота в историю
+        history.append({"role": "assistant", "content": bot_reply})
+        
+        # Отправляем ответ в Telegram
+        bot.send_message(chat_id, bot_reply)
+        
+        # Ограничение памяти (чтобы история не росла бесконечно и не тратила лимиты)
+        # Оставляем системный промпт (первое сообщение) и последние 20 сообщений
+        if len(history) > 21:
+            user_histories[chat_id] = [history[0]] + history[-20:]
 
-def main():
-    # Мы используем новый токен, теперь всё должно заработать
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
-    application.add_handler(CommandHandler("start", lambda u, c: u.message.reply_text("...Ой, привет. Ты тоже здесь?")))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    print("✅ Попытка запуска с новым токеном...")
-    application.run_polling(drop_pending_updates=True)
+    except Exception as e:
+        bot.send_message(chat_id, "*посмотрела испуганно* Ой, что-то пошло не так... Я, кажется, задумалась.")
+        print(f"Ошибка OpenRouter: {e}")
 
+# Запуск бота
 if __name__ == "__main__":
-    main()
+    print("Бот Лена запущен и готов к работе!")
+    bot.infinity_polling()
