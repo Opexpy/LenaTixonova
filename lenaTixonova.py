@@ -2,7 +2,7 @@ import telebot
 from openai import OpenAI
 
 # ================= НАСТРОЙКИ =================
-TELEGRAM_BOT_TOKEN = "ВАШ_ТОКЕН_ОТ_BOTFATHER"
+TELEGRAM_BOT_TOKEN = "8361115667:AAHimZavoQJlNnHwTLgpTuhZg5MBqIgLOWU"
 OPENROUTER_API_KEY = "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"
 MODEL_NAME = "deepseek/deepseek-r1-0528:free"
 
