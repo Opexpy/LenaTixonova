@@ -3,7 +3,7 @@ from openai import OpenAI
 
 # ================= НАСТРОЙКИ =================
 TELEGRAM_BOT_TOKEN = "8361115667:AAH4Xxsa0P7kmjBcMOyNMTnJzQIe-Kml9Bo"
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 # Модель обновлена по твоему запросу
 MODEL_NAME = "openai/gpt-oss-120b:free"
 
