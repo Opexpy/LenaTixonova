@@ -2,7 +2,7 @@ import telebot
 from openai import OpenAI
 
 # ================= НАСТРОЙКИ =================
-TELEGRAM_BOT_TOKEN = "8361115667:AAE-JnKeKgKa4wHtQhUOd9OwiCXua_Vbkaw"
+TELEGRAM_BOT_TOKEN = "8361115667:AAHivSepkVSDljUkPsy5Oifm2NpvKlXc8fw"
 OPENROUTER_API_KEY = "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"
 # Пробуем модель Grok (без цензуры)
 MODEL_NAME = "x-ai/grok-4.1-fast"
