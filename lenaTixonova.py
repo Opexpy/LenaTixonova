@@ -4,8 +4,8 @@ from openai import OpenAI
 # ================= НАСТРОЙКИ =================
 TELEGRAM_BOT_TOKEN = "8361115667:AAGOKn47PebR6QHn5Mv4jgyY2AbVN8R8JR4"
 OPENROUTER_API_KEY = "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"
-# Пробуем модель Grok (без цензуры)
-MODEL_NAME = "x-ai/grok-4.1-fast"
+# Deepseak V4 Flash
+MODEL_NAME = "deepseek/deepseek-v4-flash"
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 client = OpenAI(
