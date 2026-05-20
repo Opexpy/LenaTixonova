@@ -1,16 +1,17 @@
 import telebot
 from openai import OpenAI
 
-# ================= НАСТРОЙКИ =================
+# Замени эти значения на свои настоящие ключи
 TELEGRAM_BOT_TOKEN = "8361115667:AAGOKn47PebR6QHn5Mv4jgyY2AbVN8R8JR4"
-OPENROUTER_API_KEY = "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"
-# Deepseak V4 Flash
-MODEL_NAME = "deepseek/deepseek-v4-flash"
+DEEPSEEK_API_KEY = "k-or-v1-b332512cf546eb75c53eb6f399123e90ae97732a1d997fc9307489fda9f1b0b6" 
+MODEL_NAME = "deepseek-chat" # или "deepseek-reasoner", если хочешь использовать их умную модель
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+
+# Теперь подключаемся напрямую к серверам DeepSeek...
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com"
 )
 
 user_histories = {}
@@ -65,13 +66,10 @@ def handle_message(message):
     bot.send_chat_action(chat_id, 'typing')
 
     try:
+        # Убрали extra_headers, для официального API DeepSeek они не нужны...
         response = client.chat.completions.create(
             model=MODEL_NAME,
-            messages=history,
-            extra_headers={
-                "HTTP-Referer": "https://t.me", 
-                "X-Title": "Lena Telegram Bot"  
-            }
+            messages=history
         )
         
         bot_reply = response.choices[0].message.content
@@ -86,5 +84,5 @@ def handle_message(message):
         bot.send_message(chat_id, error_msg, parse_mode='Markdown')
 
 if __name__ == "__main__":
-    print("Бот Лена запущен с моделью Grok!")
+    print("Бот Лена запущен с моделью DeepSeek!")
     bot.infinity_polling()
